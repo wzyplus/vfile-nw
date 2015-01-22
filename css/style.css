@@ -1,0 +1,23 @@
+div#row1 {
+  margin-top: 5px;
+}
+
+.fixed-width {
+  width: 100px;
+}
+
+.fixed-width-double {
+  width: 200px;
+}
+
+tr {
+  white-space: nowrap;
+}
+
+th {
+  text-align: center;
+}
+
+html,body {
+  height: 100%;
+}
