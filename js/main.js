@@ -2,7 +2,7 @@ var fs = require('fs');
 var path = require('path');
 
 
-var BASE_DIR = './format';
+var BASE_DIR = path.join(path.dirname(process.execPath), './format');
 
 function chooseFile(name, label) {
   var chooser = $(name);
