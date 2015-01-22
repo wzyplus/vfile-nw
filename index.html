@@ -12,17 +12,28 @@
   <script src="js/bootstrap-select.min.js"></script>
 
   <style type="text/css">
-    div#header {
-        margin-bottom: 10px;
-        margin-top: 2px;
+    div#row1 {
+      margin-top: 5px;
     }
 
     .fixed-width {
-        width: 100px;
+      width: 100px;
     }
 
     .fixed-width-double {
-        width: 200px;
+      width: 200px;
+    }
+
+    tr {
+      white-space: nowrap;
+    }
+
+    th {
+      text-align: center;
+    }
+
+    html,body {
+      height: 100%;
     }
   </style>
 
@@ -91,13 +102,18 @@
                   body_column: [], body_data: [], record_length: 0,
                   code: 0};
 
-      for (var i in rule.head) {
-        res.head_column.push(rule.head[i].name);
-        res.head_length += rule.head[i].length;
+      if (rule.head) {
+        for (var i in rule.head) {
+          res.head_column.push(rule.head[i].name);
+          res.head_length += rule.head[i].length;
+        }
       }
-      for (var i in rule.body) {
-        res.body_column.push(rule.body[i].name);
-        res.record_length += rule.body[i].length;
+      
+      if (rule.body) {
+        for (var i in rule.body) {
+          res.body_column.push(rule.body[i].name);
+          res.record_length += rule.body[i].length;
+        }
       }
       return res;
     }
@@ -109,41 +125,45 @@
       var flen = 0;
 
       // parse head
-      var record = [];
-      for (var i in rule.head) {
-        flen = rule.head[i].length;
-        if (left < flen) {
-          res.code = 1;
-          res.head_data.push(record);
-          return res;
-        }
-
-        record.push(parseData(rule.head[i].type,
-                              buffer,
-                              done, done + flen));
-        done += flen;
-        left -= flen;
-      }
-      res.head_data.push(record);
-
-      // parse body
-      while (left > 0) {
+      if (rule.head) {
         var record = [];
-        for (var i in rule.body) {
-          flen = rule.body[i].length;
+        for (var i in rule.head) {
+          flen = rule.head[i].length;
           if (left < flen) {
             res.code = 1;
-            res.body_data.push(record);
+            res.head_data.push(record);
             return res;
           }
 
-          record.push(parseData(rule.body[i].type,
+          record.push(parseData(rule.head[i].type,
                                 buffer,
                                 done, done + flen));
           done += flen;
           left -= flen;
         }
-        res.body_data.push(record);
+        res.head_data.push(record);
+      }
+      
+      if (rule.body) {
+        // parse body
+        while (left > 0) {
+          var record = [];
+          for (var i in rule.body) {
+            flen = rule.body[i].length;
+            if (left < flen) {
+              res.code = 1;
+              res.body_data.push(record);
+              return res;
+            }
+
+            record.push(parseData(rule.body[i].type,
+                                  buffer,
+                                  done, done + flen));
+            done += flen;
+            left -= flen;
+          }
+          res.body_data.push(record);
+        }
       }
       return res;
     }
@@ -166,18 +186,19 @@
       });
     }
 
-    $.makeTable = function (header, data, hasIndex) {
+    setTableData = function (table, header, data, hasIndex) {
       var hasIndex = hasIndex || false;
 
-      var table = $('<table border=1>');
-      var tblHeader = "<tr>";
+      $(table).empty();
+
+      var tblHeader = "<thead><tr>";
       if (hasIndex) {
-        tblHeader += "<th>" + '序号' + "</th>";
+        tblHeader += "<th>" + '#' + "</th>";
       }
       $.each(header, function(index, value) {
         tblHeader += "<th>" + value + "</th>";
       });
-      tblHeader += "</tr>";
+      tblHeader += "</tr></thead>";
       $(tblHeader).appendTo(table);
 
       var rowIndex = 1;
@@ -188,13 +209,25 @@
           rowIndex++;
         }
         $.each(value, function (key, val) {
+          if (val.indexOf(' ') > -1) {
+            row += '<td class="info">' + val.replace(/ /g, '&nbsp') + "</td>";
+          } else {
             row += "<td>" + val + "</td>";
+          }
         });
         row += "</tr>";
         $(table).append(row);
       });
-      return ($(table));
     };
+
+    function setDataTableHeight() {
+      var row3 = $('#row3');
+      var height = $(window).height()
+                   - $('#row1').outerHeight(true)
+                   - $('#row2').outerHeight(true)
+                   - (row3.outerHeight(true) - row3.height());
+      row3.css('maxHeight', height + 'px');
+    }
 
     $(document).ready(function() {
       addSelectOption('#file_format', getFiles(BASE_DIR));
@@ -213,13 +246,23 @@
           return;
         }
         parseFile(file, format, function(v) {
-          var table = $.makeTable(v.head_column, v.head_data);
-          $(table).appendTo("#file_head");
-
-          table = $.makeTable(v.body_column, v.body_data, true);
-          $(table).appendTo("#file_body");
+          if (v.head_column.length > 0) {
+            setTableData($('#file_head'), v.head_column, v.head_data);
+            $('#row2').show();
+          } else {
+            $('#row2').hide();
+          }
+          if (v.body_column.length > 0) {
+            setTableData($('#file_body'), v.body_column, v.body_data, true);
+            setDataTableHeight();
+            $('#row3').show();
+          } else {
+            $('#row3').hide();
+          }
         });
       });
+
+      window.onresize = setDataTableHeight;
     });
 
   </script>
@@ -228,7 +271,7 @@
   <input style="display:none" id="fileDialog" type="file" />
 
   <div class="container-fluid">
-    <div id="header">
+    <div id="row1">
       <select id="file_format" class="selectpicker fixed-width-double">
         <option value disabled selected style="display:none">请选择格式</option>
       </select>
@@ -239,12 +282,14 @@
         style="margin-top: 5px; margin-bottom: 0px">请选择文件</div>
     </div>
 
-    <div id="content">
-      <div class="panel panel-default" id="file_head">
-      </div>
+    <div id="row2" class="panel panel-default table-responsive" 
+      style="display:none; margin-top: 10px; margin-bottom: 10px">
+      <table class="table table-bordered" id="file_head"></table>
+    </div>
 
-      <div class="panel panel-default" id="file_body">
-      </div>
+    <div id="row3" class="panel panel-default table-responsive"
+      style="display:none; margin-bottom: 5px">
+      <table class="table table-bordered table-hover" id="file_body"></table>
     </div>
   </div>
 </body>
